@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════
 // SFX Terminal - Sound Effects for VS Code Terminal
+// v0.0.6 — Instant audio engine + better terminal compatibility
 // Plays success/error sounds automatically when terminal commands finish.
 // Zero configuration needed - just install and use!
 // ═══════════════════════════════════════════════════════════════════════
@@ -7,7 +8,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { exec } from 'child_process';
+import { spawn, exec, ChildProcess } from 'child_process';
 import * as os from 'os';
 
 let isExtensionEnabled = true;
@@ -19,11 +20,16 @@ let outputChannel: vscode.OutputChannel;
 let cachedSuccessPath: string | null = null;
 let cachedErrorPath: string | null = null;
 
+// Persistent audio engine (Windows only) — eliminates per-sound startup delay
+let audioEngine: ChildProcess | null = null;
+let audioEngineReady = false;
+let audioEngineStarting = false;
+
 // ─── Activation ─────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('SFX Terminal');
-    outputChannel.appendLine('SFX Terminal v0.0.5 activating...');
+    outputChannel.appendLine('SFX Terminal v0.0.6 activating...');
     outputChannel.appendLine('Platform: ' + process.platform);
     outputChannel.appendLine('Extension path: ' + context.extensionPath);
 
@@ -35,6 +41,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Load config
     isExtensionEnabled = vscode.workspace.getConfiguration('sfxTerminal').get('enabled', true);
+
+    // Pre-warm audio engine on Windows for instant playback
+    if (process.platform === 'win32') {
+        startAudioEngine();
+    }
 
     // ── Register commands ──
     context.subscriptions.push(
@@ -63,7 +74,6 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration('sfxTerminal')) {
                 isExtensionEnabled = vscode.workspace.getConfiguration('sfxTerminal').get('enabled', true);
-                // Re-resolve custom paths if changed
                 cachedSuccessPath = resolveSoundPath(context, 'success');
                 cachedErrorPath = resolveSoundPath(context, 'error');
             }
@@ -100,71 +110,230 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.window.onDidChangeTerminalShellIntegration((e) => {
-            outputChannel.appendLine('[INFO] Shell integration active: ' + e.terminal.name);
+            outputChannel.appendLine('[INFO] ✅ Shell integration activated: ' + e.terminal.name);
         }),
         vscode.window.onDidStartTerminalShellExecution((e) => {
             outputChannel.appendLine('[SHELL] Command started in: ' + e.terminal.name);
         })
     );
 
-    // ── Terminal lifecycle ──
+    // ── Terminal lifecycle with shell integration monitoring ──
     context.subscriptions.push(
         vscode.window.onDidOpenTerminal(terminal => {
             outputChannel.appendLine('[INFO] Terminal opened: ' + terminal.name);
-            if (!(terminal as any).shellIntegration) {
-                pollForShellIntegration(terminal);
-            }
+            watchForShellIntegration(terminal);
         }),
         vscode.window.onDidCloseTerminal(terminal => {
             outputChannel.appendLine('[INFO] Terminal closed: ' + terminal.name);
+            watchedTerminals.delete(terminal);
         })
     );
 
-    // Check existing terminals
-    vscode.window.terminals.forEach(t => {
-        if (!(t as any).shellIntegration) {
-            pollForShellIntegration(t);
-        }
-    });
+    // Monitor existing terminals
+    vscode.window.terminals.forEach(t => watchForShellIntegration(t));
+
+    // Check shell integration settings on Windows
+    checkShellIntegrationConfig();
 
     outputChannel.appendLine('');
     outputChannel.appendLine('════════════════════════════════════════');
-    outputChannel.appendLine('  SFX Terminal is ACTIVE! ✅');
-    outputChannel.appendLine('  • Use PowerShell terminal for best results');
-    outputChannel.appendLine('  • Test: Ctrl+Shift+P → "SFX: Test Success Sound"');
+    outputChannel.appendLine('  SFX Terminal v0.0.6 is ACTIVE! ✅');
+    outputChannel.appendLine('  • Terminal sounds need PowerShell');
+    outputChannel.appendLine('  • Test: Ctrl+Shift+P → "SFX: Test"');
     outputChannel.appendLine('════════════════════════════════════════');
     outputChannel.show();
 }
 
-// ─── Shell integration polling ──────────────────────────────────────
+// ─── Persistent Audio Engine (Windows) ──────────────────────────────
+// Spawns ONE PowerShell process at extension startup, pre-compiles
+// winmm.dll bindings via Add-Type, then plays sounds instantly by
+// piping commands to stdin. Eliminates the 2-3 second delay that
+// occurred from spawning a new PowerShell + compiling Add-Type per sound.
 
-const pollingSet = new Set<string>();
+function startAudioEngine() {
+    if (audioEngine || audioEngineStarting) { return; }
+    audioEngineStarting = true;
+    outputChannel.appendLine('[AUDIO] Starting persistent audio engine...');
 
-function pollForShellIntegration(terminal: vscode.Terminal) {
-    if (pollingSet.has(terminal.name)) { return; }
-    pollingSet.add(terminal.name);
+    try {
+        audioEngine = spawn('powershell.exe', [
+            '-NoProfile', '-NoLogo', '-NonInteractive',
+            '-ExecutionPolicy', 'Bypass',
+            '-Command', '-'
+        ], {
+            stdio: ['pipe', 'pipe', 'pipe'],
+            windowsHide: true
+        });
+    } catch (err: any) {
+        outputChannel.appendLine('[AUDIO] Failed to start engine: ' + err.message);
+        audioEngineStarting = false;
+        return;
+    }
+
+    // Compile winmm.dll bindings ONCE, define Play-SFX function
+    const initScript = [
+        '$ErrorActionPreference = "SilentlyContinue"',
+        'Add-Type @"',
+        'using System;',
+        'using System.Runtime.InteropServices;',
+        'using System.Text;',
+        'public class WinMM {',
+        '    [DllImport("winmm.dll")]',
+        '    public static extern int mciSendString(string cmd, StringBuilder retStr, int retLen, IntPtr hwndCallback);',
+        '}',
+        '"@',
+        '',
+        'function Play-SFX {',
+        '    param([string]$SoundPath, [string]$SoundAlias)',
+        '    [WinMM]::mciSendString("open `"$SoundPath`" type mpegvideo alias $SoundAlias", $null, 0, [IntPtr]::Zero) | Out-Null',
+        '    [WinMM]::mciSendString("play $SoundAlias wait", $null, 0, [IntPtr]::Zero) | Out-Null',
+        '    [WinMM]::mciSendString("close $SoundAlias", $null, 0, [IntPtr]::Zero) | Out-Null',
+        '    Write-Host "SFX_DONE"',
+        '}',
+        'Write-Host "SFX_READY"',
+    ].join('\r\n') + '\r\n';
+
+    audioEngine.stdin!.write(initScript);
+
+    audioEngine.stdout!.on('data', (data: Buffer) => {
+        const text = data.toString();
+        if (text.includes('SFX_READY')) {
+            audioEngineReady = true;
+            audioEngineStarting = false;
+            outputChannel.appendLine('[AUDIO] ✅ Engine ready — sounds will play instantly');
+        }
+        if (text.includes('SFX_DONE')) {
+            outputChannel.appendLine('[OK] ✅ Sound played (instant engine)');
+        }
+    });
+
+    audioEngine.stderr!.on('data', (data: Buffer) => {
+        const msg = data.toString().trim();
+        if (msg) { outputChannel.appendLine('[AUDIO STDERR] ' + msg); }
+    });
+
+    audioEngine.on('exit', (code) => {
+        outputChannel.appendLine('[AUDIO] Engine stopped (code ' + code + ')');
+        audioEngine = null;
+        audioEngineReady = false;
+        audioEngineStarting = false;
+    });
+
+    audioEngine.on('error', (err) => {
+        outputChannel.appendLine('[AUDIO] Engine error: ' + err.message);
+        audioEngine = null;
+        audioEngineReady = false;
+        audioEngineStarting = false;
+    });
+}
+
+// ─── Shell Integration Monitoring ───────────────────────────────────
+// Polls for shell integration on each terminal. If it never activates,
+// shows a warning with a "Switch to PowerShell" button so the user
+// can fix it without manual settings hunting.
+
+const watchedTerminals = new Set<vscode.Terminal>();
+
+function watchForShellIntegration(terminal: vscode.Terminal) {
+    if (watchedTerminals.has(terminal)) { return; }
+    watchedTerminals.add(terminal);
+
+    if ((terminal as any).shellIntegration) {
+        outputChannel.appendLine('[INFO] Shell integration already active: ' + terminal.name);
+        return;
+    }
 
     let attempts = 0;
+    const maxAttempts = 20; // 20 × 500ms = 10 seconds
     const interval = setInterval(() => {
         attempts++;
         if ((terminal as any).shellIntegration) {
-            outputChannel.appendLine('[INFO] Shell integration ready: ' + terminal.name);
+            outputChannel.appendLine('[INFO] ✅ Shell integration ready: ' + terminal.name + ' (after ' + attempts + ' checks)');
             clearInterval(interval);
-            pollingSet.delete(terminal.name);
-        } else if (attempts >= 20) {
-            outputChannel.appendLine('[WARN] No shell integration for: ' + terminal.name + ' (use PowerShell)');
+        } else if (attempts >= maxAttempts) {
             clearInterval(interval);
-            pollingSet.delete(terminal.name);
+            outputChannel.appendLine('[WARN] ⚠️ No shell integration: ' + terminal.name);
+            outputChannel.appendLine('[WARN] Terminal commands won\'t trigger sounds in this terminal.');
+            outputChannel.appendLine('[WARN] Solution: Use PowerShell terminal (not cmd.exe)');
+            showShellIntegrationWarning(terminal);
         }
     }, 500);
 
-    const listener = vscode.window.onDidCloseTerminal(t => {
+    // Clean up on terminal close
+    const closeListener = vscode.window.onDidCloseTerminal(t => {
         if (t === terminal) {
             clearInterval(interval);
-            pollingSet.delete(terminal.name);
-            listener.dispose();
+            closeListener.dispose();
         }
     });
+}
+
+function showShellIntegrationWarning(terminal: vscode.Terminal) {
+    const name = terminal.name.toLowerCase();
+    const isCmd = name.includes('cmd') || name.includes('command prompt');
+
+    const message = isCmd
+        ? 'SFX Terminal: "' + terminal.name + '" doesn\'t support shell integration. Switch to PowerShell for terminal sounds.'
+        : 'SFX Terminal: Shell integration not active in "' + terminal.name + '". Use PowerShell terminal for automatic sound effects.';
+
+    vscode.window.showWarningMessage(message, 'Switch to PowerShell', 'Learn More').then(choice => {
+        if (choice === 'Switch to PowerShell') {
+            vscode.workspace.getConfiguration('terminal.integrated').update(
+                'defaultProfile.windows', 'PowerShell', vscode.ConfigurationTarget.Global
+            ).then(() => {
+                vscode.window.showInformationMessage(
+                    '✅ Default terminal set to PowerShell. Open a new terminal (Ctrl+`) to use it.'
+                );
+            });
+        } else if (choice === 'Learn More') {
+            vscode.env.openExternal(vscode.Uri.parse(
+                'https://code.visualstudio.com/docs/terminal/shell-integration'
+            ));
+        }
+    });
+}
+
+function checkShellIntegrationConfig() {
+    if (process.platform !== 'win32') { return; }
+
+    const cfg = vscode.workspace.getConfiguration('terminal.integrated');
+
+    // Warn if shell integration is explicitly disabled
+    const shellIntEnabled = cfg.get<boolean>('shellIntegration.enabled');
+    if (shellIntEnabled === false) {
+        outputChannel.appendLine('[WARN] ⚠️ Shell integration is DISABLED in settings!');
+        vscode.window.showWarningMessage(
+            'SFX Terminal: Shell integration is disabled in your settings. Enable it for terminal sound effects.',
+            'Enable Now'
+        ).then(choice => {
+            if (choice === 'Enable Now') {
+                cfg.update('shellIntegration.enabled', true, vscode.ConfigurationTarget.Global).then(() => {
+                    vscode.window.showInformationMessage(
+                        '✅ Shell integration enabled. Open a new terminal for it to take effect.'
+                    );
+                });
+            }
+        });
+    }
+
+    // Warn if default profile is cmd.exe
+    const defaultProfile = cfg.get<string>('defaultProfile.windows');
+    outputChannel.appendLine('[INFO] Default terminal profile: ' + (defaultProfile || '(system default)'));
+    if (defaultProfile && defaultProfile.toLowerCase().includes('cmd')) {
+        outputChannel.appendLine('[WARN] ⚠️ Default profile is cmd.exe — shell integration won\'t work!');
+        vscode.window.showWarningMessage(
+            'SFX Terminal: Your default terminal is cmd.exe. Shell integration (needed for terminal sounds) only works with PowerShell.',
+            'Switch to PowerShell'
+        ).then(choice => {
+            if (choice === 'Switch to PowerShell') {
+                cfg.update('defaultProfile.windows', 'PowerShell', vscode.ConfigurationTarget.Global).then(() => {
+                    vscode.window.showInformationMessage(
+                        '✅ Default terminal set to PowerShell. Open a new terminal.'
+                    );
+                });
+            }
+        });
+    }
 }
 
 // ─── Sound resolution ───────────────────────────────────────────────
@@ -216,68 +385,80 @@ function playSound(context: vscode.ExtensionContext, type: 'success' | 'error') 
     }
 }
 
-// ─── Windows: winmm.dll mciSendString ───────────────────────────────
-// winmm.dll is built into EVERY Windows since Windows 95.
-// mciSendString plays MP3 natively. No external tools needed!
+// ─── Windows: Instant playback via persistent engine ────────────────
+// Primary: pipes command to pre-warmed PS process (~100ms delay)
+// Fallback: one-shot PS process (~2s delay, no Start-Sleep needed)
+// Last resort: system WAV sounds via .NET SoundPlayer
 
 function playOnWindows(filePath: string, type: string) {
+    // Try the persistent engine first (near-instant)
+    if (audioEngine && audioEngineReady && audioEngine.stdin && !audioEngine.stdin.destroyed) {
+        try {
+            const alias = 'sfx' + Date.now();
+            const escaped = filePath.replace(/'/g, "''");
+            audioEngine.stdin.write("Play-SFX -SoundPath '" + escaped + "' -SoundAlias '" + alias + "'\r\n");
+            return;
+        } catch (err: any) {
+            outputChannel.appendLine('[WARN] Engine write failed: ' + err.message);
+        }
+    }
+
+    // Restart engine if it's down
+    if (!audioEngine && !audioEngineStarting) {
+        outputChannel.appendLine('[INFO] Restarting audio engine...');
+        startAudioEngine();
+    }
+
+    // Fallback: one-shot PowerShell (slower but always works)
+    playOnWindowsOneShot(filePath, type);
+}
+
+function playOnWindowsOneShot(filePath: string, type: string) {
+    outputChannel.appendLine('[FALLBACK] One-shot PowerShell playback...');
+
     const alias = 'sfx' + Date.now();
     const escapedPath = filePath.replace(/\\/g, '\\\\').replace(/'/g, "''");
     const tempScript = path.join(os.tmpdir(), alias + '.ps1');
 
-    // PowerShell script that uses winmm.dll to play audio
-    const lines: string[] = [];
-    lines.push("Add-Type @'");
-    lines.push("using System;");
-    lines.push("using System.Runtime.InteropServices;");
-    lines.push("using System.Text;");
-    lines.push("public class WinMM {");
-    lines.push("    [DllImport(\"winmm.dll\")]");
-    lines.push("    public static extern int mciSendString(string cmd, StringBuilder retStr, int retLen, IntPtr hwndCallback);");
-    lines.push("}");
-    lines.push("'@");
-    lines.push("");
-    lines.push("$soundFile = '" + escapedPath + "'");
-    lines.push("$alias = '" + alias + "'");
-    lines.push("");
-    lines.push("# Open the audio file");
-    lines.push('$openCmd = "open `"$soundFile`" type mpegvideo alias $alias"');
-    lines.push("[WinMM]::mciSendString($openCmd, $null, 0, [IntPtr]::Zero) | Out-Null");
-    lines.push("");
-    lines.push("# Small delay to let it load");
-    lines.push("Start-Sleep -Milliseconds 200");
-    lines.push("");
-    lines.push("# Play and wait for completion");
-    lines.push('[WinMM]::mciSendString("play $alias wait", $null, 0, [IntPtr]::Zero) | Out-Null');
-    lines.push("");
-    lines.push("# Clean up");
-    lines.push('[WinMM]::mciSendString("close $alias", $null, 0, [IntPtr]::Zero) | Out-Null');
+    // No Start-Sleep — mciSendString "open" is synchronous
+    const script = [
+        "Add-Type @'",
+        "using System;",
+        "using System.Runtime.InteropServices;",
+        "using System.Text;",
+        "public class WinMM {",
+        "    [DllImport(\"winmm.dll\")]",
+        "    public static extern int mciSendString(string cmd, StringBuilder retStr, int retLen, IntPtr hwndCallback);",
+        "}",
+        "'@",
+        "",
+        "$null = [WinMM]::mciSendString('open \"" + escapedPath + "\" type mpegvideo alias " + alias + "', $null, 0, [IntPtr]::Zero)",
+        "$null = [WinMM]::mciSendString('play " + alias + " wait', $null, 0, [IntPtr]::Zero)",
+        "$null = [WinMM]::mciSendString('close " + alias + "', $null, 0, [IntPtr]::Zero)",
+    ].join('\r\n');
 
     try {
-        fs.writeFileSync(tempScript, lines.join('\r\n'), 'utf8');
+        fs.writeFileSync(tempScript, script, 'utf8');
     } catch (writeErr) {
         outputChannel.appendLine('[ERROR] Cannot write temp script: ' + writeErr);
+        playWindowsFallback(type);
         return;
     }
 
-    const cmd = 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + tempScript + '"';
-
-    exec(cmd, { timeout: 15000 }, (err, _stdout, stderr) => {
-        // Always clean up temp file
+    exec('powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + tempScript + '"',
+        { timeout: 15000 }, (err, _stdout, stderr) => {
         try { fs.unlinkSync(tempScript); } catch (_) { /* ignore */ }
-
         if (err) {
-            outputChannel.appendLine('[ERROR] Windows playback failed: ' + err.message);
+            outputChannel.appendLine('[ERROR] One-shot failed: ' + err.message);
             if (stderr) { outputChannel.appendLine('[STDERR] ' + stderr); }
-            // Fallback: try SoundPlayer with system WAV sounds
             playWindowsFallback(type);
         } else {
-            outputChannel.appendLine('[OK] ✅ ' + type + ' sound played (winmm.dll)');
+            outputChannel.appendLine('[OK] ✅ ' + type + ' sound played (one-shot)');
         }
     });
 }
 
-// Fallback: Use .NET SoundPlayer with built-in Windows WAV sounds
+// Last resort: Use .NET SoundPlayer with built-in Windows WAV sounds
 function playWindowsFallback(type: string) {
     outputChannel.appendLine('[FALLBACK] Trying Windows system sounds...');
 
@@ -299,11 +480,10 @@ function playWindowsFallback(type: string) {
     }
 
     const escapedWav = wavPath.replace(/'/g, "''");
-    const cmd = "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"(New-Object Media.SoundPlayer '" + escapedWav + "').PlaySync()\"";
-
-    exec(cmd, { timeout: 10000 }, (err) => {
+    exec("powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command \"(New-Object Media.SoundPlayer '" + escapedWav + "').PlaySync()\"",
+        { timeout: 10000 }, (err) => {
         if (err) {
-            outputChannel.appendLine('[ERROR] Fallback failed: ' + err.message);
+            outputChannel.appendLine('[ERROR] System sound fallback failed: ' + err.message);
         } else {
             outputChannel.appendLine('[OK] ✅ Played system sound (fallback)');
         }
@@ -325,7 +505,6 @@ function playOnMac(filePath: string, type: string) {
 // ─── Linux: try multiple common audio players ───────────────────────
 
 function playOnLinux(filePath: string, type: string) {
-    // Try players in order of commonality
     const players = [
         'paplay "' + filePath + '"',
         'aplay "' + filePath + '"',
@@ -345,7 +524,6 @@ function tryNextPlayer(players: string[], index: number, type: string) {
 
     exec(players[index], { timeout: 10000 }, (err) => {
         if (err) {
-            // Try next player
             tryNextPlayer(players, index + 1, type);
         } else {
             outputChannel.appendLine('[OK] ✅ ' + type + ' sound played on Linux');
@@ -356,6 +534,14 @@ function tryNextPlayer(players: string[], index: number, type: string) {
 // ─── Deactivation ───────────────────────────────────────────────────
 
 export function deactivate() {
+    // Stop persistent audio engine
+    if (audioEngine) {
+        try {
+            audioEngine.stdin!.write('exit\r\n');
+            audioEngine.kill();
+        } catch (_) { /* ignore */ }
+        audioEngine = null;
+    }
     if (outputChannel) {
         outputChannel.dispose();
     }

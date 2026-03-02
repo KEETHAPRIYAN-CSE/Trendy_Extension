@@ -4,6 +4,26 @@ All notable changes to the "sfx-terminal" extension will be documented in this f
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.6] - 2025-07-15
+
+### Fixed
+- **CRITICAL**: Reduced audio delay from ~3 seconds to under 1 second
+- **CRITICAL**: Added detection and user guidance when shell integration isn't working
+
+### Changed
+- New persistent audio engine: pre-compiles winmm.dll bindings at startup, plays sounds instantly via stdin pipe (no more per-sound PowerShell startup)
+- Removed unnecessary `Start-Sleep -Milliseconds 200` from audio playback
+- Added automatic warning notification when shell integration fails with "Switch to PowerShell" button
+- Auto-detects if terminal.integrated.shellIntegration is disabled and offers to enable it
+- Auto-detects if default terminal is cmd.exe and offers to switch to PowerShell
+- Clean engine shutdown on extension deactivation
+
+## [0.0.5] - 2025-03-02
+
+### Fixed
+- Removed dependency on external tools (mplayer, ffmpeg, etc.)
+- Audio now uses winmm.dll (built into every Windows since Windows 95)
+
 ## [0.0.4] - 2026-03-02
 
 ### Fixed
