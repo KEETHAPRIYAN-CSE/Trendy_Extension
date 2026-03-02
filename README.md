@@ -125,3 +125,5 @@ You can author your README using Visual Studio Code. Here are some useful editor
 * [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
 
 **Enjoy!**
+[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/KEETHAPRIYAN.efx-terminal)](https://marketplace.visualstudio.com/items?itemName=KEETHAPRIYAN.efx-terminal)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/KEETHAPRIYAN.efx-terminal)](https://marketplace.visualstudio.com/items?itemName=KEETHAPRIYAN.efx-terminal)
