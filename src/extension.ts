@@ -47,8 +47,8 @@ function ensureAudioPanel(context: vscode.ExtensionContext) {
     outputChannel.appendLine('Creating audio panel...');
 
     audioPanel = vscode.window.createWebviewPanel(
-        'efxAudio',
-        '🔊 EFX Audio',
+        'sfxAudio',
+        '🔊 SFX Audio',
         { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
         { enableScripts: true, retainContextWhenHidden: true }
     );
@@ -90,9 +90,9 @@ function getAudioPlayerHtml(): string {
         '.tip{color:#666;font-size:11px;margin-top:20px;line-height:1.7}',
         '</style></head><body>',
         '<div class="c">',
-        '<h2>🔊 EFX Terminal</h2>',
+        '<h2>🔊 SFX Terminal</h2>',
         '<p class="sub">Audio Player</p>',
-        '<p class="status" id="st">✅ Ready — listening for terminal events</p>',
+        '<p class="status" id="st">✅ Ready — listening for terminal events</p>',,
         '<p class="tip">💡 Keep this tab open for sound effects.<br>',
         'You can drag it to a side panel or the bottom bar.</p>',
         '</div>',
@@ -129,54 +129,54 @@ function getAudioPlayerHtml(): string {
 // ─── Main activation ────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
-    outputChannel = vscode.window.createOutputChannel('EFX Terminal');
-    outputChannel.appendLine('EFX Terminal extension activating...');
+    outputChannel = vscode.window.createOutputChannel('SFX Terminal');
+    outputChannel.appendLine('SFX Terminal extension activating...');
 
     // Pre-load sound files as base64 data URIs
     preloadSounds(context);
 
     // Load configuration
-    const config = vscode.workspace.getConfiguration('efxTerminal');
+    const config = vscode.workspace.getConfiguration('sfxTerminal');
     isExtensionEnabled = config.get('enabled', true);
 
     // Register commands
     context.subscriptions.push(
-        vscode.commands.registerCommand('efx-terminal.enable', () => {
+        vscode.commands.registerCommand('sfx-terminal.enable', () => {
             isExtensionEnabled = true;
-            vscode.workspace.getConfiguration('efxTerminal').update('enabled', true, true);
-            vscode.window.showInformationMessage('🔊 EFX Terminal: Sound effects enabled');
+            vscode.workspace.getConfiguration('sfxTerminal').update('enabled', true, true);
+            vscode.window.showInformationMessage('🔊 SFX Terminal: Sound effects enabled');
         }),
 
-        vscode.commands.registerCommand('efx-terminal.disable', () => {
+        vscode.commands.registerCommand('sfx-terminal.disable', () => {
             isExtensionEnabled = false;
-            vscode.workspace.getConfiguration('efxTerminal').update('enabled', false, true);
-            vscode.window.showInformationMessage('🔇 EFX Terminal: Sound effects disabled');
+            vscode.workspace.getConfiguration('sfxTerminal').update('enabled', false, true);
+            vscode.window.showInformationMessage('🔇 SFX Terminal: Sound effects disabled');
         }),
 
-        vscode.commands.registerCommand('efx-terminal.testSuccess', () => {
+        vscode.commands.registerCommand('sfx-terminal.testSuccess', () => {
             playSound(context, 'success');
             vscode.window.showInformationMessage('🎵 Playing success sound...');
         }),
 
-        vscode.commands.registerCommand('efx-terminal.testError', () => {
+        vscode.commands.registerCommand('sfx-terminal.testError', () => {
             playSound(context, 'error');
             vscode.window.showInformationMessage('🎵 Playing error sound...');
         }),
 
-        vscode.commands.registerCommand('efx-terminal.showAudioPanel', () => {
+        vscode.commands.registerCommand('sfx-terminal.showAudioPanel', () => {
             ensureAudioPanel(context);
             if (audioPanel) {
                 audioPanel.reveal(vscode.ViewColumn.Beside, true);
             }
-            vscode.window.showInformationMessage('🔊 EFX Audio panel opened');
+            vscode.window.showInformationMessage('🔊 SFX Audio panel opened');
         })
     );
 
     // Listen to configuration changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('efxTerminal.enabled')) {
-                isExtensionEnabled = vscode.workspace.getConfiguration('efxTerminal').get('enabled', true);
+            if (e.affectsConfiguration('sfxTerminal.enabled')) {
+                isExtensionEnabled = vscode.workspace.getConfiguration('sfxTerminal').get('enabled', true);
             }
         })
     );
@@ -267,18 +267,18 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    outputChannel.appendLine('EFX Terminal extension activated!');
+    outputChannel.appendLine('SFX Terminal extension activated!');
     outputChannel.appendLine('Extension path: ' + context.extensionPath);
     outputChannel.appendLine('');
     outputChannel.appendLine('=== TIPS ===');
     outputChannel.appendLine('1. Use PowerShell terminal (not cmd) for shell integration');
     outputChannel.appendLine('2. Shell integration detects command completions automatically');
     outputChannel.appendLine('3. Tasks (npm run, build tasks) will always trigger sounds');
-    outputChannel.appendLine('4. Test with: Ctrl+Shift+P -> "EFX: Test Success Sound"');
-    outputChannel.appendLine('5. Keep the EFX Audio tab open for reliable sound playback');
+    outputChannel.appendLine('4. Test with: Ctrl+Shift+P -> "SFX: Test Success Sound"');
+    outputChannel.appendLine('5. Keep the SFX Audio tab open for reliable sound playback');
     outputChannel.appendLine('============');
     outputChannel.show();
-    console.log('EFX Terminal extension is now active!');
+    console.log('SFX Terminal extension is now active!');
 }
 
 // ─── Shell integration polling ──────────────────────────────────────
@@ -321,7 +321,7 @@ function playSound(context: vscode.ExtensionContext, type: 'success' | 'error') 
     if (now - lastSoundTime < SOUND_COOLDOWN) { return; }
     lastSoundTime = now;
 
-    const cfg = vscode.workspace.getConfiguration('efxTerminal');
+    const cfg = vscode.workspace.getConfiguration('sfxTerminal');
     const volume = cfg.get<number>('volume', 100);
     const customPath = type === 'success'
         ? cfg.get<string>('successSound')

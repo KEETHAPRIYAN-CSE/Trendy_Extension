@@ -1,7 +1,7 @@
 {
-    "efxTerminal.enabled": true,
-    "efxTerminal.volume": 70,
-    "efxTerminal.successSound": "C:\\efx-terminal\\sounds\\success.mp3",
-    "efxTerminal.errorSound": "C:\\efx-terminal\\sounds\\error.mp3",
+    "sfxTerminal.enabled": true,
+    "sfxTerminal.volume": 70,
+    "sfxTerminal.successSound": "C:\\efx-terminal\\sounds\\success.mp3",
+    "sfxTerminal.errorSound": "C:\\efx-terminal\\sounds\\error.mp3",
     "terminal.integrated.shellIntegration.enabled": true
 }

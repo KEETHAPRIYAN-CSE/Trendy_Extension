@@ -1,8 +1,8 @@
-# EFX Terminal - Sound Effects Extension 🎵
+# SFX Terminal - Sound Effects Extension 🎵
 
 **Add trendy sound effects to your VS Code terminal commands!** 
 
-EFX Terminal plays success and error sounds when terminal commands complete, making your coding experience more engaging and providing immediate audio feedback.
+SFX Terminal plays success and error sounds when terminal commands complete, making your coding experience more engaging and providing immediate audio feedback.
 
 ## ✨ Features
 
@@ -22,24 +22,24 @@ EFX Terminal plays success and error sounds when terminal commands complete, mak
 3. **Run commands**: 
    - `echo "Success!"` ✅ → Success sound
    - `exit 1` ❌ → Error sound
-4. **Test manually**: Ctrl+Shift+P → "EFX: Test Success Sound"
+4. **Test manually**: Ctrl+Shift+P → "SFX: Test Success Sound"
 
 ## ⚙️ Configuration
 
 This extension provides the following settings:
 
-- `efxTerminal.enabled`: Enable/disable sound effects (default: true)
-- `efxTerminal.volume`: Volume level 0-100 (default: 100)
-- `efxTerminal.successSound`: Path to custom success sound file
-- `efxTerminal.errorSound`: Path to custom error sound file
+- `sfxTerminal.enabled`: Enable/disable sound effects (default: true)
+- `sfxTerminal.volume`: Volume level 0-100 (default: 100)
+- `sfxTerminal.successSound`: Path to custom success sound file
+- `sfxTerminal.errorSound`: Path to custom error sound file
 
 ## 🔧 Commands
 
-- **EFX: Enable Terminal Audio** - Turn on sound effects
-- **EFX: Disable Terminal Audio** - Turn off sound effects  
-- **EFX: Test Success Sound** - Play success sound
-- **EFX: Test Error Sound** - Play error sound
-- **EFX: Show Audio Panel** - Open the WebView audio player panel
+- **SFX: Enable Terminal Audio** - Turn on sound effects
+- **SFX: Disable Terminal Audio** - Turn off sound effects  
+- **SFX: Test Success Sound** - Play success sound
+- **SFX: Test Error Sound** - Play error sound
+- **SFX: Show Audio Panel** - Open the WebView audio player panel
 
 ## 🔊 Custom Sounds
 
@@ -48,8 +48,8 @@ Replace the default sounds by:
 2. Or specify custom paths in settings:
    ```json
    {
-     "efxTerminal.successSound": "C:/path/to/your/success.mp3",
-     "efxTerminal.errorSound": "C:/path/to/your/error.wav"
+     "sfxTerminal.successSound": "C:/path/to/your/success.mp3",
+     "sfxTerminal.errorSound": "C:/path/to/your/error.wav"
    }
    ```
 
@@ -59,16 +59,16 @@ Replace the default sounds by:
 - **Shell Integration** must be enabled in VS Code settings
 - **Build Tasks** always trigger sounds (npm run compile, webpack, etc.)
 - **Error Detection** works for both terminal commands and compiler errors
-- **Keep audio panel open** - The EFX Audio tab plays sounds via WebView. You can drag it to a side panel or bottom bar.
+- **Keep audio panel open** - The SFX Audio tab plays sounds via WebView. You can drag it to a side panel or bottom bar.
 
 ## 🐛 Troubleshooting
 
 **No sounds playing?**
-1. Make sure the **EFX Audio panel is open** (Ctrl+Shift+P → "EFX: Show Audio Panel")
-2. Check Output panel → "EFX Terminal" for debug logs
+1. Make sure the **SFX Audio panel is open** (Ctrl+Shift+P → "SFX: Show Audio Panel")
+2. Check Output panel → "SFX Terminal" for debug logs
 3. Ensure shell integration is enabled: Settings → "Terminal Integration"
 4. Use PowerShell terminal instead of CMD
-5. Test with: Ctrl+Shift+P → "EFX: Test Success Sound"
+5. Test with: Ctrl+Shift+P → "SFX: Test Success Sound"
 
 **Shell integration not working?**
 - Wait 2-3 seconds after opening terminal
@@ -98,18 +98,24 @@ Press **F5** to launch Extension Development Host
 
 ## 📝 Release Notes
 
+### 0.0.3
+
+**Branding Update**
+- 🏷️ **Renamed to SFX Terminal** - Changed from EFX to SFX (Sound Effects)
+- 📝 **Updated all commands and settings** - New namespace: `sfxTerminal.*`
+
 ### 0.0.2
 
 **Audio System Rewrite - Universal Compatibility!**
 - 🌐 **WebView Audio Player** - Replaced PowerShell-based audio with VS Code's built-in Chromium engine
 - ✅ **Works on all machines** - No more PowerShell script issues or missing dependencies
 - 🚀 **Faster playback** - Sounds are pre-loaded as base64 data URIs
-- 🎯 **New command** - "EFX: Show Audio Panel" to manage the audio player
+- 🎯 **New command** - "SFX: Show Audio Panel" to manage the audio player
 - 🔧 **Improved reliability** - Single code path for Windows, Mac, and Linux
 
 ### 0.0.1
 
-Initial release of EFX Terminal
+Initial release of SFX Terminal
 - Terminal command sound effects
 - VS Code task integration  
 - Custom sound file support
@@ -142,5 +148,5 @@ You can author your README using Visual Studio Code. Here are some useful editor
 * [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
 
 **Enjoy!**
-[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/KEETHAPRIYAN.efx-terminal)](https://marketplace.visualstudio.com/items?itemName=KEETHAPRIYAN.efx-terminal)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/KEETHAPRIYAN.efx-terminal)](https://marketplace.visualstudio.com/items?itemName=KEETHAPRIYAN.efx-terminal)
+[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/KEETHAPRIYAN.sfx-terminal)](https://marketplace.visualstudio.com/items?itemName=KEETHAPRIYAN.sfx-terminal)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/KEETHAPRIYAN.sfx-terminal)](https://marketplace.visualstudio.com/items?itemName=KEETHAPRIYAN.sfx-terminal)

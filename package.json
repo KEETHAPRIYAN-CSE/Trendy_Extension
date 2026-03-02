@@ -1,8 +1,8 @@
 {
-  "name": "efx-terminal",
-  "displayName": "EFX Terminal - Sound Effects",
+  "name": "sfx-terminal",
+  "displayName": "SFX Terminal - Sound Effects",
   "description": "Add trendy sound effects to VS Code terminal commands! Plays success/error sounds when commands complete.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "KEETHAPRIYAN",
   "author": {
     "name": "KEETHAPRIYAN",
@@ -38,45 +38,45 @@
   "contributes": {
     "commands": [
       {
-        "command": "efx-terminal.enable",
-        "title": "EFX: Enable Terminal Audio"
+        "command": "sfx-terminal.enable",
+        "title": "SFX: Enable Terminal Audio"
       },
       {
-        "command": "efx-terminal.disable",
-        "title": "EFX: Disable Terminal Audio"
+        "command": "sfx-terminal.disable",
+        "title": "SFX: Disable Terminal Audio"
       },
       {
-        "command": "efx-terminal.testSuccess",
-        "title": "EFX: Test Success Sound"
+        "command": "sfx-terminal.testSuccess",
+        "title": "SFX: Test Success Sound"
       },
       {
-        "command": "efx-terminal.testError",
-        "title": "EFX: Test Error Sound"
+        "command": "sfx-terminal.testError",
+        "title": "SFX: Test Error Sound"
       },
       {
-        "command": "efx-terminal.showAudioPanel",
-        "title": "EFX: Show Audio Panel"
+        "command": "sfx-terminal.showAudioPanel",
+        "title": "SFX: Show Audio Panel"
       }
     ],
     "configuration": {
-      "title": "EFX Terminal",
+      "title": "SFX Terminal",
       "properties": {
-        "efxTerminal.enabled": {
+        "sfxTerminal.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Enable audio feedback for terminal commands"
         },
-        "efxTerminal.successSound": {
+        "sfxTerminal.successSound": {
           "type": "string",
           "default": "",
           "description": "Path to custom success sound file"
         },
-        "efxTerminal.errorSound": {
+        "sfxTerminal.errorSound": {
           "type": "string",
           "default": "",
           "description": "Path to custom error sound file"
         },
-        "efxTerminal.volume": {
+        "sfxTerminal.volume": {
           "type": "number",
           "default": 100,
           "minimum": 0,
