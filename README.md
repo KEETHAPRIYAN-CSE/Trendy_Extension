@@ -1,28 +1,28 @@
 # SFX Terminal - Sound Effects Extension 🎵
 
-**Add trendy sound effects to your VS Code terminal commands!** 
+**Add trendy sound effects to your VS Code terminal!**
 
-SFX Terminal plays success and error sounds when terminal commands complete, making your coding experience more engaging and providing immediate audio feedback.
+Just install and go! SFX Terminal **automatically** plays success and error sounds when your terminal commands finish. No setup, no configuration needed.
 
 ## ✨ Features
 
 - 🎵 **Success Sound** - Plays when commands exit with code 0
-- 🚨 **Error Sound** - Plays when commands fail (non-zero exit code)  
-- 🔧 **Task Integration** - Works with VS Code build tasks (npm run, webpack, etc.)
-- � **Native Audio** - Uses system audio players (mplayer/afplay/wmplayer) - works automatically!
-- ⚙️ **Customizable** - Use your own sound files
-- 🎛️ **Volume Control** - Adjust sound volume (0-100%)
+- 🚨 **Error Sound** - Plays when commands fail (non-zero exit code)
+- 🔧 **Task Integration** - Works with VS Code build tasks (npm, webpack, tsc, etc.)
+- 🔊 **Native Audio** - Uses Windows built-in `winmm.dll` / Mac `afplay` / Linux `paplay` — no extra installs!
+- ⚙️ **Customizable** - Use your own MP3/WAV sound files
 - ⚡ **Shell Integration** - Automatic command detection in PowerShell terminals
-- 💻 **Cross Platform** - Works on Windows, macOS, and Linux
+- 💻 **Cross Platform** - Windows, macOS, and Linux
+- 📦 **Zero Config** - Sounds are bundled. Just install and it works!
 
 ## 🎮 How to Use
 
-1. **Install the extension** (F5 to test during development)
-2. **Open a PowerShell terminal** (View → Terminal → New Terminal)
-3. **Run commands**: 
-   - `echo "Success!"` ✅ → Success sound
+1. **Install the extension** from VS Code Marketplace
+2. **Open a PowerShell terminal** (View → Terminal)
+3. **Run any command** — sounds play automatically!
+   - `echo "Hello"` ✅ → Success sound
    - `exit 1` ❌ → Error sound
-4. **Test manually**: Ctrl+Shift+P → "SFX: Test Success Sound"
+4. **That's it!** No configuration needed.
 
 ## ⚙️ Configuration
 
@@ -54,11 +54,9 @@ Replace the default sounds by:
 
 ## 💡 Tips
 
-- **PowerShell works best** - CMD may have limited shell integration support
-- **Shell Integration** must be enabled in VS Code settings
-- **Build Tasks** always trigger sounds (npm run compile, webpack, etc.)
-- **Error Detection** works for both terminal commands and compiler errors
-- **Automatic playback** - Sounds play automatically, no user interaction needed!
+- **PowerShell works best** — CMD has limited shell integration support
+- **Build Tasks always work** — `npm run build`, `tsc`, `webpack` etc. trigger sounds even without shell integration
+- **Sounds are bundled** — The MP3 files ship inside the extension, nothing extra to download
 
 ## 🐛 Troubleshooting
 
@@ -74,11 +72,19 @@ Replace the default sounds by:
 - Sounds still work for VS Code tasks and manual tests
 - Consider switching to PowerShell terminal
 
-## 📋 Requirements
+## 📚 How It Works
+
+| Platform | Audio Method | Needs Install? |
+|----------|-------------|----------------|
+| **Windows** | `winmm.dll` (mciSendString) via PowerShell | ❌ No — built into Windows |
+| **macOS** | `afplay` command | ❌ No — built into macOS |
+| **Linux** | `paplay` / `aplay` / `mpv` / `ffplay` | Usually pre-installed |
+
+## 📝 Requirements
 
 - **VS Code** 1.93.0 or higher
-- **Audio support** on your system
-- **PowerShell** recommended for full terminal integration
+- **PowerShell** terminal recommended (for shell integration)
+- **No extra software needed** — uses OS built-in audio!
 
 ## 🚀 Installation for Development
 
@@ -92,6 +98,17 @@ npm run compile
 Press **F5** to launch Extension Development Host
 
 ## 📝 Release Notes
+
+### 0.0.5
+
+**FINAL FIX — Works on every machine!**
+- 🔊 **Windows: Uses `winmm.dll` (mciSendString)** — built into every Windows since Windows 95, plays MP3 natively
+- 🍎 **Mac: Uses `afplay`** — built into every macOS
+- 🐧 **Linux: Uses `paplay`/`aplay`/`mpv`/`ffplay`** — tries multiple players automatically
+- ❌ Removed WebView approach (blocked by Chrome autoplay policy)
+- ❌ Removed play-sound dependency (needed external tools not installed by default)
+- ✅ **Fallback system** — If MP3 playback fails on Windows, falls back to built-in WAV system sounds
+- 📦 **Fully self-contained** — No extra downloads or configuration needed
 
 ### 0.0.4
 
@@ -130,24 +147,6 @@ Initial release of SFX Terminal
 **Enjoy coding with sound effects!** 🎉
 
 Created by [KEETHAPRIYAN](https://github.com/KEETHAPRIYAN-CSE)
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
 * [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
 
 **Enjoy!**
