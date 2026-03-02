@@ -24,6 +24,7 @@
     "productivity",
     "feedback"
   ],
+  "license": "MIT",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -73,7 +74,7 @@
         },
         "efxTerminal.volume": {
           "type": "number",
-          "default": 50,
+          "default": 100,
           "minimum": 0,
           "maximum": 100,
           "description": "Volume level (0-100)"
