@@ -9,6 +9,7 @@ EFX Terminal plays success and error sounds when terminal commands complete, mak
 - 🎵 **Success Sound** - Plays when commands exit with code 0
 - 🚨 **Error Sound** - Plays when commands fail (non-zero exit code)  
 - 🔧 **Task Integration** - Works with VS Code build tasks (npm run, webpack, etc.)
+- 🌐 **WebView Audio Player** - Uses VS Code's built-in Chromium engine (works on all machines!)
 - ⚙️ **Customizable** - Use your own sound files
 - 🎛️ **Volume Control** - Adjust sound volume (0-100%)
 - ⚡ **Shell Integration** - Automatic command detection in PowerShell terminals
@@ -28,7 +29,7 @@ EFX Terminal plays success and error sounds when terminal commands complete, mak
 This extension provides the following settings:
 
 - `efxTerminal.enabled`: Enable/disable sound effects (default: true)
-- `efxTerminal.volume`: Volume level 0-100 (default: 50)
+- `efxTerminal.volume`: Volume level 0-100 (default: 100)
 - `efxTerminal.successSound`: Path to custom success sound file
 - `efxTerminal.errorSound`: Path to custom error sound file
 
@@ -38,6 +39,7 @@ This extension provides the following settings:
 - **EFX: Disable Terminal Audio** - Turn off sound effects  
 - **EFX: Test Success Sound** - Play success sound
 - **EFX: Test Error Sound** - Play error sound
+- **EFX: Show Audio Panel** - Open the WebView audio player panel
 
 ## 🔊 Custom Sounds
 
@@ -57,19 +59,25 @@ Replace the default sounds by:
 - **Shell Integration** must be enabled in VS Code settings
 - **Build Tasks** always trigger sounds (npm run compile, webpack, etc.)
 - **Error Detection** works for both terminal commands and compiler errors
+- **Keep audio panel open** - The EFX Audio tab plays sounds via WebView. You can drag it to a side panel or bottom bar.
 
 ## 🐛 Troubleshooting
 
 **No sounds playing?**
-1. Check Output panel → "EFX Terminal" for debug logs
-2. Ensure shell integration is enabled: Settings → "Terminal Integration"
-3. Use PowerShell terminal instead of CMD
-4. Test with: Ctrl+Shift+P → "EFX: Test Success Sound"
+1. Make sure the **EFX Audio panel is open** (Ctrl+Shift+P → "EFX: Show Audio Panel")
+2. Check Output panel → "EFX Terminal" for debug logs
+3. Ensure shell integration is enabled: Settings → "Terminal Integration"
+4. Use PowerShell terminal instead of CMD
+5. Test with: Ctrl+Shift+P → "EFX: Test Success Sound"
 
 **Shell integration not working?**
 - Wait 2-3 seconds after opening terminal
 - Sounds still work for VS Code tasks and manual tests
 - Consider switching to PowerShell terminal
+
+**Audio panel keeps closing?**
+- The WebView panel auto-opens when needed, but keeping it open gives best performance
+- Drag it to a side panel or bottom bar to keep it persistent
 
 ## 📋 Requirements
 
@@ -89,6 +97,15 @@ npm run compile
 Press **F5** to launch Extension Development Host
 
 ## 📝 Release Notes
+
+### 0.0.2
+
+**Audio System Rewrite - Universal Compatibility!**
+- 🌐 **WebView Audio Player** - Replaced PowerShell-based audio with VS Code's built-in Chromium engine
+- ✅ **Works on all machines** - No more PowerShell script issues or missing dependencies
+- 🚀 **Faster playback** - Sounds are pre-loaded as base64 data URIs
+- 🎯 **New command** - "EFX: Show Audio Panel" to manage the audio player
+- 🔧 **Improved reliability** - Single code path for Windows, Mac, and Linux
 
 ### 0.0.1
 
