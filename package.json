@@ -1,0 +1,83 @@
+{
+  "name": "efx-terminal",
+  "displayName": "EFX Terminal",
+  "description": "It plays trending sound when terminal got error or run successfully.",
+  "version": "0.0.1",
+  "publisher": "your-name",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "efx-terminal.enable",
+        "title": "EFX: Enable Terminal Audio"
+      },
+      {
+        "command": "efx-terminal.disable",
+        "title": "EFX: Disable Terminal Audio"
+      },
+      {
+        "command": "efx-terminal.testSuccess",
+        "title": "EFX: Test Success Sound"
+      },
+      {
+        "command": "efx-terminal.testError",
+        "title": "EFX: Test Error Sound"
+      }
+    ],
+    "configuration": {
+      "title": "EFX Terminal",
+      "properties": {
+        "efxTerminal.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable audio feedback for terminal commands"
+        },
+        "efxTerminal.successSound": {
+          "type": "string",
+          "default": "",
+          "description": "Path to custom success sound file"
+        },
+        "efxTerminal.errorSound": {
+          "type": "string",
+          "default": "",
+          "description": "Path to custom error sound file"
+        },
+        "efxTerminal.volume": {
+          "type": "number",
+          "default": 50,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Volume level (0-100)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.19.13",
+    "@types/vscode": "^1.93.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  }
+  
+}
