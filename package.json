@@ -1,9 +1,29 @@
 {
   "name": "efx-terminal",
-  "displayName": "EFX Terminal",
-  "description": "It plays trending sound when terminal got error or run successfully.",
+  "displayName": "EFX Terminal - Sound Effects",
+  "description": "Add trendy sound effects to VS Code terminal commands! Plays success/error sounds when commands complete.",
   "version": "0.0.1",
-  "publisher": "your-name",
+  "publisher": "KEETHAPRIYAN",
+  "author": {
+    "name": "KEETHAPRIYAN",
+    "url": "https://github.com/KEETHAPRIYAN-CSE"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KEETHAPRIYAN-CSE/Trendy_Extension.git"
+  },
+  "homepage": "https://github.com/KEETHAPRIYAN-CSE/Trendy_Extension#readme",
+  "bugs": {
+    "url": "https://github.com/KEETHAPRIYAN-CSE/Trendy_Extension/issues"
+  },
+  "keywords": [
+    "terminal",
+    "sound",
+    "audio",
+    "effects",
+    "productivity",
+    "feedback"
+  ],
   "engines": {
     "vscode": "^1.93.0"
   },

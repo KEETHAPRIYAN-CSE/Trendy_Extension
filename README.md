@@ -1,53 +1,109 @@
-# efx-terminal README
+# EFX Terminal - Sound Effects Extension 🎵
 
-This is the README for your extension "efx-terminal". After writing up a brief description, we recommend including the following sections.
+**Add trendy sound effects to your VS Code terminal commands!** 
 
-## Features
+EFX Terminal plays success and error sounds when terminal commands complete, making your coding experience more engaging and providing immediate audio feedback.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+## ✨ Features
 
-For example if there is an image subfolder under your extension project workspace:
+- 🎵 **Success Sound** - Plays when commands exit with code 0
+- 🚨 **Error Sound** - Plays when commands fail (non-zero exit code)  
+- 🔧 **Task Integration** - Works with VS Code build tasks (npm run, webpack, etc.)
+- ⚙️ **Customizable** - Use your own sound files
+- 🎛️ **Volume Control** - Adjust sound volume (0-100%)
+- ⚡ **Shell Integration** - Automatic command detection in PowerShell terminals
+- 💻 **Cross Platform** - Works on Windows, macOS, and Linux
 
-\!\[feature X\]\(images/feature-x.png\)
+## 🎮 How to Use
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+1. **Install the extension** (F5 to test during development)
+2. **Open a PowerShell terminal** (View → Terminal → New Terminal)
+3. **Run commands**: 
+   - `echo "Success!"` ✅ → Success sound
+   - `exit 1` ❌ → Error sound
+4. **Test manually**: Ctrl+Shift+P → "EFX: Test Success Sound"
 
-## Requirements
+## ⚙️ Configuration
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+This extension provides the following settings:
 
-## Extension Settings
+- `efxTerminal.enabled`: Enable/disable sound effects (default: true)
+- `efxTerminal.volume`: Volume level 0-100 (default: 50)
+- `efxTerminal.successSound`: Path to custom success sound file
+- `efxTerminal.errorSound`: Path to custom error sound file
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## 🔧 Commands
 
-For example:
+- **EFX: Enable Terminal Audio** - Turn on sound effects
+- **EFX: Disable Terminal Audio** - Turn off sound effects  
+- **EFX: Test Success Sound** - Play success sound
+- **EFX: Test Error Sound** - Play error sound
 
-This extension contributes the following settings:
+## 🔊 Custom Sounds
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+Replace the default sounds by:
+1. Adding your `.mp3` or `.wav` files to the extension's `sounds/` folder
+2. Or specify custom paths in settings:
+   ```json
+   {
+     "efxTerminal.successSound": "C:/path/to/your/success.mp3",
+     "efxTerminal.errorSound": "C:/path/to/your/error.wav"
+   }
+   ```
 
-## Known Issues
+## 💡 Tips
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- **PowerShell works best** - CMD may have limited shell integration support
+- **Shell Integration** must be enabled in VS Code settings
+- **Build Tasks** always trigger sounds (npm run compile, webpack, etc.)
+- **Error Detection** works for both terminal commands and compiler errors
 
-## Release Notes
+## 🐛 Troubleshooting
 
-Users appreciate release notes as you update your extension.
+**No sounds playing?**
+1. Check Output panel → "EFX Terminal" for debug logs
+2. Ensure shell integration is enabled: Settings → "Terminal Integration"
+3. Use PowerShell terminal instead of CMD
+4. Test with: Ctrl+Shift+P → "EFX: Test Success Sound"
 
-### 1.0.0
+**Shell integration not working?**
+- Wait 2-3 seconds after opening terminal
+- Sounds still work for VS Code tasks and manual tests
+- Consider switching to PowerShell terminal
 
-Initial release of ...
+## 📋 Requirements
 
-### 1.0.1
+- **VS Code** 1.93.0 or higher
+- **Audio support** on your system
+- **PowerShell** recommended for full terminal integration
 
-Fixed issue #.
+## 🚀 Installation for Development
 
-### 1.1.0
+```bash
+git clone https://github.com/KEETHAPRIYAN-CSE/Trendy_Extension.git
+cd Trendy_Extension  
+npm install
+npm run compile
+```
 
-Added features X, Y, and Z.
+Press **F5** to launch Extension Development Host
+
+## 📝 Release Notes
+
+### 0.0.1
+
+Initial release of EFX Terminal
+- Terminal command sound effects
+- VS Code task integration  
+- Custom sound file support
+- Cross-platform audio playback
+- Shell integration for PowerShell
 
 ---
+
+**Enjoy coding with sound effects!** 🎉
+
+Created by [KEETHAPRIYAN](https://github.com/KEETHAPRIYAN-CSE)
 
 ## Following extension guidelines
 
