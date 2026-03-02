@@ -9,7 +9,7 @@ SFX Terminal plays success and error sounds when terminal commands complete, mak
 - 🎵 **Success Sound** - Plays when commands exit with code 0
 - 🚨 **Error Sound** - Plays when commands fail (non-zero exit code)  
 - 🔧 **Task Integration** - Works with VS Code build tasks (npm run, webpack, etc.)
-- 🌐 **WebView Audio Player** - Uses VS Code's built-in Chromium engine (works on all machines!)
+- � **Native Audio** - Uses system audio players (mplayer/afplay/wmplayer) - works automatically!
 - ⚙️ **Customizable** - Use your own sound files
 - 🎛️ **Volume Control** - Adjust sound volume (0-100%)
 - ⚡ **Shell Integration** - Automatic command detection in PowerShell terminals
@@ -39,7 +39,6 @@ This extension provides the following settings:
 - **SFX: Disable Terminal Audio** - Turn off sound effects  
 - **SFX: Test Success Sound** - Play success sound
 - **SFX: Test Error Sound** - Play error sound
-- **SFX: Show Audio Panel** - Open the WebView audio player panel
 
 ## 🔊 Custom Sounds
 
@@ -59,25 +58,21 @@ Replace the default sounds by:
 - **Shell Integration** must be enabled in VS Code settings
 - **Build Tasks** always trigger sounds (npm run compile, webpack, etc.)
 - **Error Detection** works for both terminal commands and compiler errors
-- **Keep audio panel open** - The SFX Audio tab plays sounds via WebView. You can drag it to a side panel or bottom bar.
+- **Automatic playback** - Sounds play automatically, no user interaction needed!
 
 ## 🐛 Troubleshooting
 
 **No sounds playing?**
-1. Make sure the **SFX Audio panel is open** (Ctrl+Shift+P → "SFX: Show Audio Panel")
-2. Check Output panel → "SFX Terminal" for debug logs
-3. Ensure shell integration is enabled: Settings → "Terminal Integration"
-4. Use PowerShell terminal instead of CMD
-5. Test with: Ctrl+Shift+P → "SFX: Test Success Sound"
+1. Check Output panel → "SFX Terminal" for debug logs
+2. Ensure shell integration is enabled: Settings → "Terminal Integration"
+3. Use PowerShell terminal instead of CMD
+4. Test with: Ctrl+Shift+P → "SFX: Test Success Sound"
+5. Check that system audio is working (try playing any audio file)
 
 **Shell integration not working?**
 - Wait 2-3 seconds after opening terminal
 - Sounds still work for VS Code tasks and manual tests
 - Consider switching to PowerShell terminal
-
-**Audio panel keeps closing?**
-- The WebView panel auto-opens when needed, but keeping it open gives best performance
-- Drag it to a side panel or bottom bar to keep it persistent
 
 ## 📋 Requirements
 
@@ -97,6 +92,14 @@ npm run compile
 Press **F5** to launch Extension Development Host
 
 ## 📝 Release Notes
+
+### 0.0.4
+
+**Critical Fix - Audio Autoplay Issue!**
+- 🔧 **Fixed autoplay blocking** - Replaced WebView audio with native system audio players
+- ✅ **Works automatically** - No user interaction needed, sounds play on every terminal event
+- 🚀 **Better reliability** - Uses mplayer (Windows), afplay (Mac), or other system players
+- ❌ **Removed WebView panel** - No longer needed, audio works directly
 
 ### 0.0.3
 

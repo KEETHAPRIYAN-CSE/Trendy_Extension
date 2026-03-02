@@ -7,21 +7,123 @@ let lastSoundTime = 0;
 const SOUND_COOLDOWN = 500;
 let outputChannel: vscode.OutputChannel;
 
-// ─── Native Audio Player ────────────────────────────────────────────
-// Uses play-sound package with native system audio players
-// No browser autoplay restrictions!
-let player: any;
+// ─── WebView Audio Player ───────────────────────────────────────────
+// Uses VS Code's built-in Chromium engine to play audio.
+// Works on every machine — no PowerShell, no external tools needed.
+let audioPanel: vscode.WebviewPanel | undefined;
+let audioPanelReady = false;
+let pendingMessages: any[] = [];
 
-function initializeAudioPlayer() {
-    try {
-        // Dynamically import play-sound
-        const playSound = require('play-sound');
-        player = playSound({ player: null }); // Auto-detect system player
-        outputChannel.appendLine('✅ Audio player initialized (using native system audio)');
-    } catch (err: any) {
-        outputChannel.appendLine('❌ Failed to initialize audio player: ' + err.message);
-        player = null;
+// Pre-loaded sound data URIs (base64-encoded MP3)
+let successDataUri: string | null = null;
+let errorDataUri: string | null = null;
+
+function preloadSounds(context: vscode.ExtensionContext) {
+    const successPath = path.join(context.extensionPath, 'sounds', 'success.mp3');
+    const errorPath = path.join(context.extensionPath, 'sounds', 'error.mp3');
+
+    if (fs.existsSync(successPath)) {
+        const buf = fs.readFileSync(successPath);
+        successDataUri = 'data:audio/mpeg;base64,' + buf.toString('base64');
+        outputChannel.appendLine('Preloaded success sound (' + buf.length + ' bytes)');
+    } else {
+        outputChannel.appendLine('WARNING: success.mp3 not found at ' + successPath);
     }
+
+    if (fs.existsSync(errorPath)) {
+        const buf = fs.readFileSync(errorPath);
+        errorDataUri = 'data:audio/mpeg;base64,' + buf.toString('base64');
+        outputChannel.appendLine('Preloaded error sound (' + buf.length + ' bytes)');
+    } else {
+        outputChannel.appendLine('WARNING: error.mp3 not found at ' + errorPath);
+    }
+}
+
+function ensureAudioPanel(context: vscode.ExtensionContext) {
+    if (audioPanel) {
+        return;
+    }
+
+    outputChannel.appendLine('Creating audio panel...');
+
+    audioPanel = vscode.window.createWebviewPanel(
+        'sfxAudio',
+        '🔊 SFX Audio',
+        { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
+        { enableScripts: true, retainContextWhenHidden: true }
+    );
+
+    audioPanelReady = false;
+    audioPanel.webview.html = getAudioPlayerHtml();
+
+    audioPanel.webview.onDidReceiveMessage(msg => {
+        if (msg.type === 'ready') {
+            audioPanelReady = true;
+            outputChannel.appendLine('Audio panel ready — flushing ' + pendingMessages.length + ' pending sounds');
+            for (const m of pendingMessages) {
+                audioPanel!.webview.postMessage(m);
+            }
+            pendingMessages = [];
+        } else if (msg.type === 'played') {
+            outputChannel.appendLine('Sound played via WebView: ' + msg.soundType);
+        } else if (msg.type === 'error') {
+            outputChannel.appendLine('WebView audio error: ' + msg.message);
+        }
+    });
+
+    audioPanel.onDidDispose(() => {
+        audioPanel = undefined;
+        audioPanelReady = false;
+        outputChannel.appendLine('Audio panel closed — will recreate on next sound');
+    });
+}
+
+function getAudioPlayerHtml(): string {
+    return [
+        '<!DOCTYPE html><html><head><style>',
+        'body{background:#1e1e1e;color:#ccc;font-family:system-ui,-apple-system,sans-serif;',
+        'display:flex;align-items:center;justify-content:center;height:100vh;margin:0}',
+        '.c{text-align:center;max-width:420px;padding:20px}',
+        'h2{color:#569CD6;margin-bottom:4px}',
+        '.sub{color:#888;font-size:13px}',
+        '.status{color:#6A9955;margin-top:16px;font-size:14px}',
+        '.tip{color:#666;font-size:11px;margin-top:20px;line-height:1.7}',
+        '</style></head><body>',
+        '<div class="c">',
+        '<h2>🔊 SFX Terminal</h2>',
+        '<p class="sub">Audio Player</p>',
+        '<p class="status" id="st">✅ Ready — listening for terminal events</p>',,
+        '<p class="tip">💡 Keep this tab open for sound effects.<br>',
+        'You can drag it to a side panel or the bottom bar.</p>',
+        '</div>',
+        '<script>',
+        'const vs=acquireVsCodeApi();',
+        'let last=0;',
+        'window.addEventListener("message",function(ev){',
+        '  var d=ev.data;',
+        '  if(d.type==="play"){',
+        '    var now=Date.now();if(now-last<300)return;last=now;',
+        '    var el=document.getElementById("st");',
+        '    el.textContent="🎵 Playing "+d.soundType+" sound...";',
+        '    try{',
+        '      var a=new Audio(d.dataUri);',
+        '      a.volume=d.volume||1;',
+        '      a.play().then(function(){',
+        '        el.textContent="✅ Played: "+d.soundType;',
+        '        vs.postMessage({type:"played",soundType:d.soundType});',
+        '      }).catch(function(e){',
+        '        el.textContent="❌ "+e.message;',
+        '        vs.postMessage({type:"error",message:e.message});',
+        '      });',
+        '    }catch(e){',
+        '      el.textContent="❌ "+e.message;',
+        '      vs.postMessage({type:"error",message:e.message});',
+        '    }',
+        '  }',
+        '});',
+        'vs.postMessage({type:"ready"});',
+        '</script></body></html>'
+    ].join('\n');
 }
 
 // ─── Main activation ────────────────────────────────────────────────
@@ -30,8 +132,8 @@ export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('SFX Terminal');
     outputChannel.appendLine('SFX Terminal extension activating...');
 
-    // Initialize native audio player
-    initializeAudioPlayer();
+    // Pre-load sound files as base64 data URIs
+    preloadSounds(context);
 
     // Load configuration
     const config = vscode.workspace.getConfiguration('sfxTerminal');
@@ -59,6 +161,14 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('sfx-terminal.testError', () => {
             playSound(context, 'error');
             vscode.window.showInformationMessage('🎵 Playing error sound...');
+        }),
+
+        vscode.commands.registerCommand('sfx-terminal.showAudioPanel', () => {
+            ensureAudioPanel(context);
+            if (audioPanel) {
+                audioPanel.reveal(vscode.ViewColumn.Beside, true);
+            }
+            vscode.window.showInformationMessage('🔊 SFX Audio panel opened');
         })
     );
 
@@ -165,7 +275,7 @@ export function activate(context: vscode.ExtensionContext) {
     outputChannel.appendLine('2. Shell integration detects command completions automatically');
     outputChannel.appendLine('3. Tasks (npm run, build tasks) will always trigger sounds');
     outputChannel.appendLine('4. Test with: Ctrl+Shift+P -> "SFX: Test Success Sound"');
-    outputChannel.appendLine('5. Sounds play using native system audio (mplayer/afplay/wmplayer)');
+    outputChannel.appendLine('5. Keep the SFX Audio tab open for reliable sound playback');
     outputChannel.appendLine('============');
     outputChannel.show();
     console.log('SFX Terminal extension is now active!');
@@ -217,53 +327,44 @@ function playSound(context: vscode.ExtensionContext, type: 'success' | 'error') 
         ? cfg.get<string>('successSound')
         : cfg.get<string>('errorSound');
 
-    let soundPath: string | null = null;
+    let dataUri: string | null = null;
 
     // Custom sound file
     if (customPath && customPath.trim() !== '' && fs.existsSync(customPath)) {
-        soundPath = customPath;
+        const buf = fs.readFileSync(customPath);
+        const ext = path.extname(customPath).toLowerCase();
+        const mime = ext === '.wav' ? 'audio/wav' : ext === '.ogg' ? 'audio/ogg' : 'audio/mpeg';
+        dataUri = 'data:' + mime + ';base64,' + buf.toString('base64');
         outputChannel.appendLine('Using custom sound: ' + customPath);
     } else {
-        // Use bundled sound
-        const fileName = type === 'success' ? 'success.mp3' : 'error.mp3';
-        const bundledPath = path.join(context.extensionPath, 'sounds', fileName);
-        if (fs.existsSync(bundledPath)) {
-            soundPath = bundledPath;
-            outputChannel.appendLine('Using bundled sound: ' + bundledPath);
-        } else {
-            outputChannel.appendLine('❌ Sound file not found: ' + bundledPath);
-        }
+        // Use preloaded bundled sound
+        dataUri = type === 'success' ? successDataUri : errorDataUri;
     }
 
-    if (!soundPath) {
-        outputChannel.appendLine('No sound file available for: ' + type);
+    if (!dataUri) {
+        outputChannel.appendLine('No sound data available for: ' + type);
         return;
     }
 
-    // Play using native audio player
-    playNativeAudio(soundPath, volume / 100, type);
-}
+    // Ensure the audio WebView panel exists
+    ensureAudioPanel(context);
 
-function playNativeAudio(filePath: string, volume: number, type: string) {
-    if (!player) {
-        outputChannel.appendLine('❌ Audio player not initialized');
-        return;
+    const msg = { type: 'play', dataUri: dataUri, volume: volume / 100, soundType: type };
+
+    if (audioPanelReady && audioPanel) {
+        audioPanel.webview.postMessage(msg);
+    } else {
+        pendingMessages.push(msg);
     }
-
-    outputChannel.appendLine('🔊 Playing ' + type + ' sound: ' + filePath);
-
-    player.play(filePath, { timeout: 5000 }, (err: any) => {
-        if (err) {
-            outputChannel.appendLine('❌ Audio playback error: ' + err.message);
-        } else {
-            outputChannel.appendLine('✅ Sound played successfully: ' + type);
-        }
-    });
 }
 
 // ─── Deactivation ───────────────────────────────────────────────────
 
 export function deactivate() {
+    if (audioPanel) {
+        audioPanel.dispose();
+        audioPanel = undefined;
+    }
     if (outputChannel) {
         outputChannel.dispose();
     }
