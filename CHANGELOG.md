@@ -4,6 +4,24 @@ All notable changes to the "sfx-terminal" extension will be documented in this f
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.8] - 2026-03-03
+
+### Added
+- **Manual trigger commands**: `SFX: Trigger Success Sound` and `SFX: Trigger Error Sound`
+- **Keyboard shortcuts**: `Ctrl+Shift+S` (success) and `Ctrl+Shift+E` (error) when terminal is focused
+- These provide a fallback for systems where shell integration doesn't work
+
+### Fixed
+- **Enterprise/College systems**: Added manual fallback for systems where shell integration is blocked
+- Force-enabled multiple shell integration settings for better compatibility
+- Enabled shell integration decorations and suggestions automatically
+- Better tracking of shell integration state across terminals
+
+### Changed
+- Extension now enables additional VS Code settings to maximize shell integration success
+- Improved shell integration detection and monitoring
+- Added manual trigger as fallback for systems where automatic detection fails
+
 ## [0.0.7] - 2026-03-03
 
 ### Fixed

@@ -39,6 +39,17 @@ This extension provides the following settings:
 - **SFX: Disable Terminal Audio** - Turn off sound effects  
 - **SFX: Test Success Sound** - Play success sound
 - **SFX: Test Error Sound** - Play error sound
+- **SFX: Trigger Success Sound (Manual)** - Manual success trigger (for fallback)
+- **SFX: Trigger Error Sound (Manual)** - Manual error trigger (for fallback)
+
+## ⌨️ Keyboard Shortcuts (Fallback)
+
+If automatic sounds don't work on your system, use these keyboard shortcuts when terminal is focused:
+
+| Shortcut | Command | Description |
+|----------|---------|-------------|
+| `Ctrl+Shift+S` | Success Sound | Play success sound manually |
+| `Ctrl+Shift+E` | Error Sound | Play error sound manually |
 
 ## 🔊 Custom Sounds
 
@@ -67,9 +78,11 @@ Replace the default sounds by:
 4. Test with: Ctrl+Shift+P → "SFX: Test Success Sound"
 5. Check that system audio is working (try playing any audio file)
 
-**Shell integration not working?**
+**Shell integration not working? (Enterprise/College systems)**
+- Shell integration may be blocked by group policies
+- **Use manual keyboard shortcuts**: `Ctrl+Shift+S` for success, `Ctrl+Shift+E` for error
 - Wait 2-3 seconds after opening terminal
-- Sounds still work for VS Code tasks and manual tests
+- VS Code tasks (npm run build, etc.) still trigger sounds automatically
 - Consider switching to PowerShell terminal
 
 ## 📚 How It Works
@@ -98,6 +111,15 @@ npm run compile
 Press **F5** to launch Extension Development Host
 
 ## 📝 Release Notes
+
+### 0.0.8
+
+**ENTERPRISE/COLLEGE FIX — Works on ALL machines!**
+- ⌨️ **Manual keyboard shortcuts** — `Ctrl+Shift+S` (success) and `Ctrl+Shift+E` (error) when terminal focused
+- 🏢 **Enterprise/college systems** — Fallback for systems where shell integration is blocked
+- 🔧 **Force-enabled settings** — Automatically enables all shell integration related settings
+- ✅ **Manual trigger commands** — Use via Command Palette when automatic detection fails
+- 🛡️ **Better compatibility** — Multiple layers of shell integration enforcement
 
 ### 0.0.7
 

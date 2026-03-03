@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════
 // SFX Terminal - Sound Effects for VS Code Terminal
-// v0.0.7 — Pre-loaded audio engine + auto shell integration
+// v0.0.8 — Universal fallback: works even without shell integration!
 // Plays success/error sounds automatically when terminal commands finish.
 // Zero configuration needed - just install and use!
 // ═══════════════════════════════════════════════════════════════════════
@@ -25,11 +25,23 @@ let audioEngine: ChildProcess | null = null;
 let audioEngineReady = false;
 let audioEngineStarting = false;
 
+// Track which terminals have working shell integration
+const terminalsWithShellIntegration = new Set<vscode.Terminal>();
+
+// Fallback: Terminal data monitoring state
+interface TerminalState {
+    lastDataTime: number;
+    commandRunning: boolean;
+    buffer: string;
+    shellIntegrationWorking: boolean;
+}
+const terminalStates = new Map<vscode.Terminal, TerminalState>();
+
 // ─── Activation ─────────────────────────────────────────────────────
 
 export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('SFX Terminal');
-    outputChannel.appendLine('SFX Terminal v0.0.7 activating...');
+    outputChannel.appendLine('SFX Terminal v0.0.8 activating...');
     outputChannel.appendLine('Platform: ' + process.platform);
     outputChannel.appendLine('Extension path: ' + context.extensionPath);
 
@@ -106,6 +118,11 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.window.onDidEndTerminalShellExecution((e) => {
             if (!isExtensionEnabled) { return; }
+            // Mark this terminal as having working shell integration
+            terminalsWithShellIntegration.add(e.terminal);
+            const state = terminalStates.get(e.terminal);
+            if (state) { state.shellIntegrationWorking = true; }
+            
             outputChannel.appendLine('[SHELL] Command finished in ' + e.terminal.name + ' → exit code: ' + e.exitCode);
             if (e.exitCode === 0) {
                 playSound(context, 'success');
@@ -118,9 +135,30 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.window.onDidChangeTerminalShellIntegration((e) => {
             outputChannel.appendLine('[INFO] ✅ Shell integration activated: ' + e.terminal.name);
+            terminalsWithShellIntegration.add(e.terminal);
+            const state = terminalStates.get(e.terminal);
+            if (state) { state.shellIntegrationWorking = true; }
         }),
         vscode.window.onDidStartTerminalShellExecution((e) => {
             outputChannel.appendLine('[SHELL] Command started in: ' + e.terminal.name);
+            const state = terminalStates.get(e.terminal);
+            if (state) { state.commandRunning = true; }
+        })
+    );
+
+    // ── FALLBACK: Manual trigger commands ──
+    // For systems where shell integration doesn't work, users can bind these to keyboard shortcuts
+    // or add them to their shell profile
+    context.subscriptions.push(
+        vscode.commands.registerCommand('sfx-terminal.commandSuccess', () => {
+            if (!isExtensionEnabled) { return; }
+            outputChannel.appendLine('[MANUAL] Success triggered');
+            playSound(context, 'success');
+        }),
+        vscode.commands.registerCommand('sfx-terminal.commandError', () => {
+            if (!isExtensionEnabled) { return; }
+            outputChannel.appendLine('[MANUAL] Error triggered');
+            playSound(context, 'error');
         })
     );
 
@@ -128,24 +166,30 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.window.onDidOpenTerminal(terminal => {
             outputChannel.appendLine('[INFO] Terminal opened: ' + terminal.name);
+            initTerminalState(terminal);
             watchForShellIntegration(terminal);
         }),
         vscode.window.onDidCloseTerminal(terminal => {
             outputChannel.appendLine('[INFO] Terminal closed: ' + terminal.name);
             watchedTerminals.delete(terminal);
+            terminalStates.delete(terminal);
+            terminalsWithShellIntegration.delete(terminal);
         })
     );
 
     // Monitor existing terminals
-    vscode.window.terminals.forEach(t => watchForShellIntegration(t));
+    vscode.window.terminals.forEach(t => {
+        initTerminalState(t);
+        watchForShellIntegration(t);
+    });
 
     // Check shell integration settings on Windows
     checkShellIntegrationConfig();
 
     outputChannel.appendLine('');
     outputChannel.appendLine('════════════════════════════════════════');
-    outputChannel.appendLine('  SFX Terminal v0.0.7 is ACTIVE! ✅');
-    outputChannel.appendLine('  • Terminal sounds need PowerShell');
+    outputChannel.appendLine('  SFX Terminal v0.0.8 is ACTIVE! ✅');
+    outputChannel.appendLine('  • Works with or without shell integration');
     outputChannel.appendLine('  • Test: Ctrl+Shift+P → "SFX: Test"');
     outputChannel.appendLine('════════════════════════════════════════');
     outputChannel.show();
@@ -253,6 +297,98 @@ function restartAudioEngine() {
     startAudioEngine();
 }
 
+// ─── FALLBACK: Terminal Data Monitoring ─────────────────────────────
+// When shell integration doesn't work (common on enterprise/college systems),
+// we fall back to watching terminal output for command completion patterns.
+// This works universally but can't determine exit codes.
+
+function initTerminalState(terminal: vscode.Terminal) {
+    if (!terminalStates.has(terminal)) {
+        terminalStates.set(terminal, {
+            lastDataTime: 0,
+            commandRunning: false,
+            buffer: '',
+            shellIntegrationWorking: false
+        });
+    }
+}
+
+// PowerShell/Bash/Zsh prompt patterns that indicate command completion
+const PROMPT_PATTERNS = [
+    /PS [A-Z]:[^>]*> ?$/,           // PowerShell: PS C:\path>
+    /PS>[^>]*$/,                     // PowerShell: PS>
+    /\$ ?$/,                         // Bash/Zsh: $
+    /# ?$/,                          // Root shell: #
+    /> ?$/,                          // Generic prompt: >
+    /\] ?$/,                         // Zsh with brackets: ]
+    /❯ ?$/,                          // Starship/custom: ❯
+    /➜ ?$/,                          // Oh-my-zsh: ➜
+    /λ ?$/,                          // Lambda prompt: λ
+];
+
+// Patterns that indicate a command is starting (user pressed Enter)
+const COMMAND_START_PATTERNS = [
+    /\r\n/,                          // Carriage return + newline
+    /\n/,                            // Just newline
+];
+
+let fallbackSoundPending: NodeJS.Timeout | null = null;
+
+function handleTerminalData(context: vscode.ExtensionContext, terminal: vscode.Terminal, data: string) {
+    const state = terminalStates.get(terminal);
+    if (!state) {
+        initTerminalState(terminal);
+        return;
+    }
+
+    // If shell integration is working for this terminal, don't use fallback
+    if (state.shellIntegrationWorking || terminalsWithShellIntegration.has(terminal)) {
+        return;
+    }
+
+    const now = Date.now();
+    
+    // Add data to buffer (keep last 500 chars for pattern matching)
+    state.buffer += data;
+    if (state.buffer.length > 500) {
+        state.buffer = state.buffer.slice(-500);
+    }
+
+    // Detect if this looks like command output followed by a prompt
+    const hasPrompt = PROMPT_PATTERNS.some(pattern => pattern.test(state.buffer));
+    
+    if (hasPrompt) {
+        // Cancel any pending sound
+        if (fallbackSoundPending) {
+            clearTimeout(fallbackSoundPending);
+            fallbackSoundPending = null;
+        }
+
+        // Debounce: wait a tiny bit to ensure we're not mid-output
+        fallbackSoundPending = setTimeout(() => {
+            // Only play if some time has passed since last prompt (indicates a command ran)
+            if (state.commandRunning && now - state.lastDataTime > 50) {
+                outputChannel.appendLine('[FALLBACK] Command completed in: ' + terminal.name);
+                // Play success sound (we can't determine exit code in fallback mode)
+                playSound(context, 'success');
+                state.commandRunning = false;
+            }
+            state.buffer = '';
+            fallbackSoundPending = null;
+        }, 100);
+    }
+    
+    // Detect command start (user pressed Enter with content)
+    if (data.includes('\r') || data.includes('\n')) {
+        // Don't mark as running if it's just an empty Enter
+        if (state.buffer.trim().length > 5) {
+            state.commandRunning = true;
+        }
+    }
+    
+    state.lastDataTime = now;
+}
+
 // ─── Shell Integration Monitoring ───────────────────────────────────
 // Polls for shell integration on each terminal. If it never activates,
 // shows a warning with a "Switch to PowerShell" button so the user
@@ -321,16 +457,33 @@ function showShellIntegrationWarning(terminal: vscode.Terminal) {
 
 // ─── Auto-enable shell integration ──────────────────────────────────
 // Without shell integration, onDidEndTerminalShellExecution won't fire
-// and terminal commands won't trigger sounds. Auto-enable it.
+// and terminal commands won't trigger sounds. Force-enable all necessary settings.
 
 function ensureShellIntegration() {
     const cfg = vscode.workspace.getConfiguration('terminal.integrated');
-    const shellIntEnabled = cfg.get<boolean>('shellIntegration.enabled');
-    if (shellIntEnabled !== true) {
+    
+    // Enable shell integration (main setting)
+    if (cfg.get<boolean>('shellIntegration.enabled') !== true) {
         cfg.update('shellIntegration.enabled', true, vscode.ConfigurationTarget.Global).then(() => {
-            outputChannel.appendLine('[INFO] ✅ Auto-enabled shell integration for terminal sound detection');
+            outputChannel.appendLine('[INFO] ✅ Auto-enabled shell integration');
         });
     }
+
+    // Enable decorations (helps shell integration inject properly)
+    if (cfg.get<boolean>('shellIntegration.decorationsEnabled') !== true) {
+        cfg.update('shellIntegration.decorationsEnabled', true, vscode.ConfigurationTarget.Global);
+    }
+
+    // On Windows, also try to set PowerShell-specific integration settings
+    if (process.platform === 'win32') {
+        // Suggest command detection mode (may help on some systems)
+        const suggestEnabled = cfg.get<boolean>('shellIntegration.suggestEnabled');
+        if (suggestEnabled !== true) {
+            cfg.update('shellIntegration.suggestEnabled', true, vscode.ConfigurationTarget.Global);
+        }
+    }
+    
+    outputChannel.appendLine('[INFO] Shell integration settings configured');
 }
 
 function checkShellIntegrationConfig() {

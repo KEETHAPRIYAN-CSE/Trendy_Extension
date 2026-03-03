@@ -2,7 +2,7 @@
   "name": "efx-terminal",
   "displayName": "SFX Terminal - Sound Effects",
   "description": "Add trendy sound effects to VS Code terminal commands! Plays success/error sounds when commands complete.",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publisher": "KEETHAPRIYAN",
   "author": {
     "name": "KEETHAPRIYAN",
@@ -52,6 +52,28 @@
       {
         "command": "sfx-terminal.testError",
         "title": "SFX: Test Error Sound"
+      },
+      {
+        "command": "sfx-terminal.commandSuccess",
+        "title": "SFX: Trigger Success Sound (Manual)"
+      },
+      {
+        "command": "sfx-terminal.commandError",
+        "title": "SFX: Trigger Error Sound (Manual)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "sfx-terminal.commandSuccess",
+        "key": "ctrl+shift+s",
+        "mac": "cmd+shift+s",
+        "when": "terminalFocus"
+      },
+      {
+        "command": "sfx-terminal.commandError",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "terminalFocus"
       }
     ],
     "configuration": {
