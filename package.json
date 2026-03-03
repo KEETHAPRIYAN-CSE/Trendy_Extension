@@ -2,7 +2,7 @@
   "name": "efx-terminal",
   "displayName": "SFX Terminal - Sound Effects",
   "description": "Add trendy sound effects to VS Code terminal commands! Plays success/error sounds when commands complete.",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "publisher": "KEETHAPRIYAN",
   "author": {
     "name": "KEETHAPRIYAN",

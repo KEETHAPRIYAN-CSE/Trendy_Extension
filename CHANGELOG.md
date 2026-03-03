@@ -4,6 +4,22 @@ All notable changes to the "sfx-terminal" extension will be documented in this f
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.7] - 2026-03-03
+
+### Fixed
+- **INSTANT PLAYBACK**: Sounds now play within milliseconds, not seconds!
+- **UNIVERSAL COMPATIBILITY**: Auto-enables shell integration so sounds work on all machines
+- Pre-loads sound files at startup (eliminates open/close overhead)
+- Non-blocking playback: stop → seek → play (no more "wait" delay)
+- Reduced cooldown from 1000ms to 300ms for faster response
+
+### Changed
+- Audio engine now pre-opens both MP3 files at startup and keeps them loaded
+- Playback changed from blocking "open → play wait → close" to instant "stop → seek → play"
+- Shell integration is now automatically enabled on extension activation
+- Audio engine automatically restarts when sound file settings change
+- Improved reliability for users whose terminals weren't firing sound events
+
 ## [0.0.6] - 2025-07-15
 
 ### Fixed

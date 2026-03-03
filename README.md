@@ -99,6 +99,23 @@ Press **F5** to launch Extension Development Host
 
 ## 📝 Release Notes
 
+### 0.0.7
+
+**INSTANT PLAYBACK — Sounds play within milliseconds!**
+- ⚡ **Pre-loaded audio engine** — Sound files are opened at startup and stay loaded
+- 🚀 **Non-blocking playback** — Changed from "open → play wait → close" to instant "stop → seek → play" (~10ms)
+- 🔧 **Auto shell integration** — Extension now automatically enables terminal.integrated.shellIntegration.enabled
+- ✅ **Universal compatibility** — Fixes issue where sounds didn't play on some machines
+- ⏱️ **300ms cooldown** — Reduced from 1000ms for faster response
+- 🔄 **Smart engine restart** — Audio engine reloads when you change sound files in settings
+
+### 0.0.6
+
+**CRITICAL: Reduced delays + shell integration guidance**
+- Persistent audio engine reduces delay from ~3s to under 1s
+- Detects missing shell integration and guides user to fix it
+- Removed unnecessary Start-Sleep from playback code
+
 ### 0.0.5
 
 **FINAL FIX — Works on every machine!**

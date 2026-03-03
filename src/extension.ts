@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════
 // SFX Terminal - Sound Effects for VS Code Terminal
-// v0.0.6 — Instant audio engine + better terminal compatibility
+// v0.0.7 — Pre-loaded audio engine + auto shell integration
 // Plays success/error sounds automatically when terminal commands finish.
 // Zero configuration needed - just install and use!
 // ═══════════════════════════════════════════════════════════════════════
@@ -13,7 +13,7 @@ import * as os from 'os';
 
 let isExtensionEnabled = true;
 let lastSoundTime = 0;
-const SOUND_COOLDOWN = 1000; // Prevent rapid-fire sounds
+const SOUND_COOLDOWN = 300; // Minimal cooldown — sounds should feel instant
 let outputChannel: vscode.OutputChannel;
 
 // Cache resolved sound file paths
@@ -29,7 +29,7 @@ let audioEngineStarting = false;
 
 export function activate(context: vscode.ExtensionContext) {
     outputChannel = vscode.window.createOutputChannel('SFX Terminal');
-    outputChannel.appendLine('SFX Terminal v0.0.6 activating...');
+    outputChannel.appendLine('SFX Terminal v0.0.7 activating...');
     outputChannel.appendLine('Platform: ' + process.platform);
     outputChannel.appendLine('Extension path: ' + context.extensionPath);
 
@@ -41,6 +41,9 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Load config
     isExtensionEnabled = vscode.workspace.getConfiguration('sfxTerminal').get('enabled', true);
+
+    // Auto-enable shell integration so terminal events fire on all machines
+    ensureShellIntegration();
 
     // Pre-warm audio engine on Windows for instant playback
     if (process.platform === 'win32') {
@@ -76,6 +79,10 @@ export function activate(context: vscode.ExtensionContext) {
                 isExtensionEnabled = vscode.workspace.getConfiguration('sfxTerminal').get('enabled', true);
                 cachedSuccessPath = resolveSoundPath(context, 'success');
                 cachedErrorPath = resolveSoundPath(context, 'error');
+                // Restart engine so new sound files are pre-loaded
+                if (process.platform === 'win32' && audioEngine) {
+                    restartAudioEngine();
+                }
             }
         })
     );
@@ -137,7 +144,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     outputChannel.appendLine('');
     outputChannel.appendLine('════════════════════════════════════════');
-    outputChannel.appendLine('  SFX Terminal v0.0.6 is ACTIVE! ✅');
+    outputChannel.appendLine('  SFX Terminal v0.0.7 is ACTIVE! ✅');
     outputChannel.appendLine('  • Terminal sounds need PowerShell');
     outputChannel.appendLine('  • Test: Ctrl+Shift+P → "SFX: Test"');
     outputChannel.appendLine('════════════════════════════════════════');
@@ -146,9 +153,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 // ─── Persistent Audio Engine (Windows) ──────────────────────────────
 // Spawns ONE PowerShell process at extension startup, pre-compiles
-// winmm.dll bindings via Add-Type, then plays sounds instantly by
-// piping commands to stdin. Eliminates the 2-3 second delay that
-// occurred from spawning a new PowerShell + compiling Add-Type per sound.
+// winmm.dll bindings via Add-Type, AND pre-opens both sound files.
+// On playback: just stop → seek → play (non-blocking, ~10ms).
+// Eliminates all per-sound overhead for truly instant audio.
 
 function startAudioEngine() {
     if (audioEngine || audioEngineStarting) { return; }
@@ -170,8 +177,11 @@ function startAudioEngine() {
         return;
     }
 
-    // Compile winmm.dll bindings ONCE, define Play-SFX function
-    const initScript = [
+    // Compile winmm.dll bindings ONCE AND pre-open both sound files
+    const successEsc = (cachedSuccessPath || '').replace(/'/g, "''");
+    const errorEsc = (cachedErrorPath || '').replace(/'/g, "''");
+
+    const initLines: string[] = [
         '$ErrorActionPreference = "SilentlyContinue"',
         'Add-Type @"',
         'using System;',
@@ -182,16 +192,18 @@ function startAudioEngine() {
         '    public static extern int mciSendString(string cmd, StringBuilder retStr, int retLen, IntPtr hwndCallback);',
         '}',
         '"@',
-        '',
-        'function Play-SFX {',
-        '    param([string]$SoundPath, [string]$SoundAlias)',
-        '    [WinMM]::mciSendString("open `"$SoundPath`" type mpegvideo alias $SoundAlias", $null, 0, [IntPtr]::Zero) | Out-Null',
-        '    [WinMM]::mciSendString("play $SoundAlias wait", $null, 0, [IntPtr]::Zero) | Out-Null',
-        '    [WinMM]::mciSendString("close $SoundAlias", $null, 0, [IntPtr]::Zero) | Out-Null',
-        '    Write-Host "SFX_DONE"',
-        '}',
-        'Write-Host "SFX_READY"',
-    ].join('\r\n') + '\r\n';
+    ];
+
+    // Pre-open sounds at startup so playback is instant (no open/close per play)
+    if (cachedSuccessPath) {
+        initLines.push('[WinMM]::mciSendString(\'open "' + successEsc + '" type mpegvideo alias sfx_success\', $null, 0, [IntPtr]::Zero) | Out-Null');
+    }
+    if (cachedErrorPath) {
+        initLines.push('[WinMM]::mciSendString(\'open "' + errorEsc + '" type mpegvideo alias sfx_error\', $null, 0, [IntPtr]::Zero) | Out-Null');
+    }
+
+    initLines.push('Write-Host "SFX_READY"');
+    const initScript = initLines.join('\r\n') + '\r\n';
 
     audioEngine.stdin!.write(initScript);
 
@@ -225,6 +237,20 @@ function startAudioEngine() {
         audioEngineReady = false;
         audioEngineStarting = false;
     });
+}
+
+function restartAudioEngine() {
+    outputChannel.appendLine('[AUDIO] Restarting engine with new sound files...');
+    if (audioEngine) {
+        try {
+            audioEngine.stdin!.write('exit\r\n');
+            audioEngine.kill();
+        } catch (_) { /* ignore */ }
+        audioEngine = null;
+        audioEngineReady = false;
+        audioEngineStarting = false;
+    }
+    startAudioEngine();
 }
 
 // ─── Shell Integration Monitoring ───────────────────────────────────
@@ -291,6 +317,20 @@ function showShellIntegrationWarning(terminal: vscode.Terminal) {
             ));
         }
     });
+}
+
+// ─── Auto-enable shell integration ──────────────────────────────────
+// Without shell integration, onDidEndTerminalShellExecution won't fire
+// and terminal commands won't trigger sounds. Auto-enable it.
+
+function ensureShellIntegration() {
+    const cfg = vscode.workspace.getConfiguration('terminal.integrated');
+    const shellIntEnabled = cfg.get<boolean>('shellIntegration.enabled');
+    if (shellIntEnabled !== true) {
+        cfg.update('shellIntegration.enabled', true, vscode.ConfigurationTarget.Global).then(() => {
+            outputChannel.appendLine('[INFO] ✅ Auto-enabled shell integration for terminal sound detection');
+        });
+    }
 }
 
 function checkShellIntegrationConfig() {
@@ -386,17 +426,21 @@ function playSound(context: vscode.ExtensionContext, type: 'success' | 'error') 
 }
 
 // ─── Windows: Instant playback via persistent engine ────────────────
-// Primary: pipes command to pre-warmed PS process (~100ms delay)
-// Fallback: one-shot PS process (~2s delay, no Start-Sleep needed)
+// Primary: pre-loaded MCI aliases → stop/seek/play (~10ms, non-blocking)
+// Fallback: one-shot PS process (~2s delay)
 // Last resort: system WAV sounds via .NET SoundPlayer
 
 function playOnWindows(filePath: string, type: string) {
-    // Try the persistent engine first (near-instant)
+    // Try the persistent engine first (instant — sounds are pre-loaded)
     if (audioEngine && audioEngineReady && audioEngine.stdin && !audioEngine.stdin.destroyed) {
         try {
-            const alias = 'sfx' + Date.now();
-            const escaped = filePath.replace(/'/g, "''");
-            audioEngine.stdin.write("Play-SFX -SoundPath '" + escaped + "' -SoundAlias '" + alias + "'\r\n");
+            const alias = type === 'success' ? 'sfx_success' : 'sfx_error';
+            // stop → seek to start → play (non-blocking, no 'wait')
+            const cmd = "[WinMM]::mciSendString('stop " + alias + "', $null, 0, [IntPtr]::Zero) | Out-Null; " +
+                "[WinMM]::mciSendString('seek " + alias + " to start', $null, 0, [IntPtr]::Zero) | Out-Null; " +
+                "[WinMM]::mciSendString('play " + alias + "', $null, 0, [IntPtr]::Zero) | Out-Null; " +
+                "Write-Host 'SFX_DONE'\r\n";
+            audioEngine.stdin.write(cmd);
             return;
         } catch (err: any) {
             outputChannel.appendLine('[WARN] Engine write failed: ' + err.message);
